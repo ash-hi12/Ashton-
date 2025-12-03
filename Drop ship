@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>HypeDrops — Starter Dropshipping Store</title>
+<meta name="description" content="Starter dropshipping storefront — product gallery, cart, and simple checkout mockup."/>
+<style>
+  /* Simple modern UI */
+  :root{ --bg:#f6f5f3; --card:#fff; --accent:#111; --muted:#777; --brand:#e33; }
+  *{box-sizing:border-box;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;}
+  body{margin:0;background:var(--bg);color:var(--accent);display:flex;min-height:100vh;align-items:flex-start;justify-content:center;padding:28px;}
+  .container{width:100%;max-width:1100px;}
+  header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
+  .brand{display:flex;gap:12px;align-items:center}
+  .logo{width:56px;height:56px;border-radius:10px;background:linear-gradient(135deg,#222,#555);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700}
+  nav{display:flex;gap:14px;align-items:center}
+  button{background:var(--brand);color:#fff;border:0;padding:10px 14px;border-radius:8px;cursor:pointer}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:18px}
+  .card{background:var(--card);padding:14px;border-radius:12px;box-shadow:0 6px 20px rgba(20,20,20,0.06);}
+  .img{height:180px;border-radius:8px;background:#efefef;display:flex;align-items:center;justify-content:center;margin-bottom:10px;color:var(--muted)}
+  .title{font-weight:600}
+  .price{color:var(--brand);font-weight:700;margin-top:6px}
+  .small{font-size:13px;color:var(--muted)}
+  .footer{display:flex;justify-content:space-between;align-items:center;margin-top:18px}
+  .cart-pill{background:#fff;border:1px solid #eee;padding:8px 12px;border-radius:999px;display:flex;gap:10px;align-items:center;box-shadow:0 6px 16px rgba(20,20,20,0.05)}
+  /* Modal */
+  .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(6,6,6,0.35);padding:22px}
+  .modal.open{display:flex}
+  .modal-card{background:var(--card);width:100%;max-width:720px;border-radius:12px;padding:18px}
+  .product-row{display:flex;gap:18px}
+  .product-row .img{flex:0 0 220px;height:220px}
+  .qty{display:flex;gap:8px;align-items:center;margin-top:12px}
+  .cart-list{max-height:320px;overflow:auto}
+  .cart-item{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed #eee}
+  /* responsive */
+  @media (max-width:700px){ .product-row{flex-direction:column}.product-row .img{width:100%;height:200px} }
+</style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="brand">
+        <div class="logo">HD</div>
+        <div>
+          <div style="font-weight:700">HypeDrops</div>
+          <div class="small">Streetwear — Hoodies · Tees · Shorts</div>
+        </div>
+      </div>
+      <nav>
+        <div class="cart-pill" id="cartButton">🛒 <span id="cartCount">0</span> items</div>
+      </nav>
+    </header>
+
+    <!-- Product grid -->
+    <main>
+      <div class="grid" id="productGrid"></div>
+    </main>
+
+    <footer class="footer">
+      <div class="small">Starter dropshipping template — replace images & prices with your supplier API.</div>
+      <div class="small">© HypeDrops</div>
+    </footer>
+  </div>
+
+  <!-- Product modal -->
+  <div class="modal" id="productModal">
+    <div class="modal-card" role="dialog" aria-modal="true">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <strong id="modalTitle">Product</strong>
+        <button id="closeModal">Close</button>
+      </div>
+      <div class="product-row" style="margin-top:12px">
+        <div class="img" id="modalImg">image</div>
+        <div style="flex:1">
+          <div id="modalDesc" class="small">Short product description.</div>
+          <div class="price" id="modalPrice">$0.00</div>
+          <div class="qty">
+            <label class="small">Qty</label>
+            <input id="qty" type="number" value="1" min="1" style="width:72px;padding:6px;border-radius:8px;border:1px solid #ddd"/>
+          </div>
+          <div style="margin-top:12px">
+            <button id="addToCart">Add to cart</button>
+            <button id="buyNow" style="background:#111;margin-left:10px">Buy now</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cart modal -->
+  <div class="modal" id="cartModal">
+    <div class="modal-card" style="width:100%;max-width:640px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <strong>Your cart</strong>
+        <button id="closeCart">Close</button>
+      </div>
+      <div class="cart-list" id="cartList" style="margin-top:10px"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px">
+        <div class="small">Total:</div>
+        <div style="font-weight:700" id="cartTotal">$0.00</div>
+      </div>
+      <div style="margin-top:12px;display:flex;gap:8px">
+        <button id="checkout">Proceed to checkout</button>
+        <button id="emptyCart" style="background:#999">Empty cart</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+/*
+  Simple client-side store:
+  - PRODUCTS is placeholder array. Replace by fetching from your supplier/product CSV or API.
+  - On checkout, you should POST cart to server/shopify/woocommerce to create real order & payment.
+*/
+const PRODUCTS = [
+  { id:'p1', title:'Minimal Black Box Logo Hoodie', price:59.99, desc:'Thick fleece, oversized fit. 4 colors', img:'https://picsum.photos/seed/hd1/600/400' },
+  { id:'p2', title:'Cream Stussy-Style Tee', price:24.99, desc:'Premium cotton tee, relaxed fit.', img:'https://picsum.photos/seed/hd2/600/400' },
+  { id:'p3', title:'Beige Essentials Sweatshorts', price:34.99, desc:'Pull-on shorts, soft terry.', img:'https://picsum.photos/seed/hd3/600/400' },
+  { id:'p4', title:'Grey Essentials Oversized Hoodie', price:64.99, desc:'Heavyweight fleece, embroidered logo.', img:'https://picsum.photos/seed/hd4/600/400' },
+  { id:'p5', title:'Limited Runner Sneaker (mock)', price:129.99, desc:'Lifestyle runner silhouette.', img:'https://picsum.photos/seed/hd5/600/400' }
+];
+
+const productGrid = document.getElementById('productGrid');
+const productModal = document.getElementById('productModal');
+const modalTitle = document.getElementById('modalTitle');
+const modalImg = document.getElementById('modalImg');
+const modalDesc = document.getElementById('modalDesc');
+const modalPrice = document.getElementById('modalPrice');
+const qtyInput = document.getElementById('qty');
+const addToCartBtn = document.getElementById('addToCart');
+const buyNowBtn = document.getElementById('buyNow');
+const closeModalBtn = document.getElementById('closeModal');
+const cartButton = document.getElementById('cartButton');
+const cartModal = document.getElementById('cartModal');
+const cartList = document.getElementById('cartList');
+const cartTotalEl = document.getElementById('cartTotal');
+const cartCountEl = document.getElementById('cartCount');
+const closeCartBtn = document.getElementById('closeCart');
+const checkoutBtn = document.getElementById('checkout');
+const emptyCartBtn = document.getElementById('emptyCart');
+
+let CURRENT = null;
+let CART = JSON.parse(localStorage.getItem('hd_cart')||'[]');
+
+function renderGrid(){
+  productGrid.innerHTML = '';
+  PRODUCTS.forEach(p=>{
+    const el = document.createElement('div');
+    el.className='card';
+    el.innerHTML = \`
+      <div class="img" style="background-image:url('\${p.img}');background-size:cover;background-position:center"></div>
+      <div class="title">\${p.title}</div>
+      <div class="small">\${p.desc}</div>
+      <div class="price">\${format(p.price)}</div>
+      <div style="margin-top:10px;display:flex;gap:8px;">
+        <button data-id="\${p.id}" class="open">View</button>
+        <button data-id="\${p.id}" class="quick" style="background:#111">Quick add</button>
+      </div>
+    \`;
+    productGrid.appendChild(el);
+  });
+}
+
+function format(n){ return '$'+Number(n).toFixed(2); }
+
+productGrid.addEventListener('click', e=>{
+  const open = e.target.closest('button.open');
+  const quick = e.target.closest('button.quick');
+  if(open){
+    const id=open.dataset.id;
+    openProduct(id);
+  } else if(quick){
+    addToCart(quick.dataset.id,1);
+  }
+});
+
+function openProduct(id){
+  const p = PRODUCTS.find(x=>x.id===id);
+  CURRENT = p;
+  modalTitle.textContent = p.title;
+  modalImg.style.backgroundImage = \`url('\${p.img}')\`;
+  modalImg.textContent = '';
+  modalDesc.textContent = p.desc;
+  modalPrice.textContent = format(p.price);
+  qtyInput.value = 1;
+  productModal.classList.add('open');
+}
+
+closeModalBtn.onclick = ()=> productModal.classList.remove('open');
+
+addToCartBtn.onclick = ()=>{
+  addToCart(CURRENT.id, Number(qtyInput.value)||1);
+  productModal.classList.remove('open');
+};
+
+buyNowBtn.onclick = ()=>{
+  addToCart(CURRENT.id, Number(qtyInput.value)||1);
+  productModal.classList.remove('open');
+  openCart();
+  // for a real store: redirect to checkout immediately
+};
+
+function addToCart(id, qty=1){
+  const item = CART.find(i=>i.id===id);
+  if(item) item.qty += qty;
+  else {
+    const p = PRODUCTS.find(x=>x.id===id);
+    CART.push({ id:p.id, title:p.title, price:p.price, qty });
+  }
+  saveCart(); renderCartSummary();
+}
+
+function saveCart(){
+  localStorage.setItem('hd_cart', JSON.stringify(CART));
+}
+
+function renderCartSummary(){
+  let total = 0, count=0;
+  CART.forEach(i=>{
+    total += i.price * i.qty;
+    count += i.qty;
+  });
+  cartTotalEl.textContent = format(total);
+  cartCountEl.textContent = count;
+}
+
+cartButton.onclick = openCart;
+function openCart(){ cartModal.classList.add('open'); renderCart(); }
+
+function closeCart(){ cartModal.classList.remove('open'); }
+closeCartBtn.onclick = closeCart;
+
+function renderCart(){
+  cartList.innerHTML = '';
+  if(CART.length===0){ cartList.innerHTML = '<div class="small">Cart is empty</div>'; return; }
+  CART.forEach(i=>{
+    const row = document.createElement('div'); row.className='cart-item';
+    row.innerHTML = \`
+      <div>
+        <div style="font-weight:600">\${i.title}</div>
+        <div class="small">\${format(i.price)} × \${i.qty}</div>
+      </div>
+      <div style="text-align:right">
+        <div>\${format(i.price * i.qty)}</div>
+        <div style="margin-top:6px"><button data-id="\${i.id}" class="remove">Remove</button></div>
+      </div>
+    \`;
+    cartList.appendChild(row);
+  });
+}
+
+cartList.addEventListener('click', e=>{
+  const rem = e.target.closest('button.remove');
+  if(rem){
+    const id = rem.dataset.id;
+    CART = CART.filter(i=>i.id!==id); saveCart(); renderCart(); renderCartSummary();
+  }
+});
+
+emptyCartBtn.onclick = ()=>{
+  CART = []; saveCart(); renderCart(); renderCartSummary();
+};
+
+checkoutBtn.onclick = ()=>{
+  // Replace this logic with server-side order creation or redirect to Shopify/WooCommerce checkout
+  if(CART.length===0){ alert('Cart empty'); return; }
+  const order = { items:CART, total:cartTotalEl.textContent, createdAt:new Date().toISOString() };
+  // For demo: print order to console and clear cart
+  console.log('MOCK ORDER -> send to server / supplier integration:', order);
+  alert('Mock order created — check console. Integrate with your backend or provider for real checkout.');
+  CART=[]; saveCart(); renderCart(); renderCartSummary(); closeCart();
+};
+
+// initial render
+renderGrid();
+renderCartSummary();
+</script>
+</body>
+</html>
